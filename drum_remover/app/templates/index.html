@@ -7,8 +7,8 @@
 </head>
 <body>  
     <h2>Upload a Song to Remove Drums</h2>
-    <form action="">
-        <input type="file">
+    <form action="/upload" method="post" enctype="multipart/form-data">
+        <input type="file" name="file">
         <button type="submit">Upload</button>
     </form>
 </body>
