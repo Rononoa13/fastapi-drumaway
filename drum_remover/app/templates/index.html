@@ -3,13 +3,208 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Remove Drums</title>
+    <title>Drum Separator</title>
+    <style>
+        .success-msg {
+            color: #4CAF50;
+            font-weight: bold;
+            margin: 15px 0;
+            text-align: center;
+        }
+        /* For upload form */
+        .container {
+            max-width: 450px;
+            margin: 50px auto;
+            padding: 20px;
+            text-align: center;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        h2 {
+            margin-bottom: 25px;
+            color: #333;
+        }
+
+        .upload-form {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .file-label {
+            font-weight: 500;
+            color: #555;
+            margin-bottom: 5px;
+            text-align: left;
+        }
+
+        .file-input {
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+            outline: none;
+            cursor: pointer;
+            transition: border 0.2s;
+        }
+
+        .file-input:hover {
+            border-color: #6c5ce7;
+        }
+
+        .upload-btn {
+            padding: 12px;
+            background: #6c5ce7;
+            color: #fff;
+            font-weight: 600;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.2s;
+        }
+
+        .upload-btn:hover {
+            background: #341f97;
+            transform: translateY(-2px);
+        }
+        /* For upload form */
+        .audio-control-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            max-width: 500px;
+            margin: 40px auto;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .audio-card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .audio-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+        }
+
+        .audio-card h3 {
+            margin-bottom: 12px;
+            color: #333;
+            font-size: 1.2rem;
+        }
+
+        audio {
+            width: 100%;
+            outline: none;
+        }
+    </style>
 </head>
-<body>  
-    <h2>Upload a Song to Remove Drums</h2>
-    <form action="/upload" method="post" enctype="multipart/form-data">
-        <input type="file" name="file">
-        <button type="submit">Upload</button>
-    </form>
+<body>
+    <div class="container">
+        <h2>Upload a Song, Hear the Drums 🔊</h2>
+        <p align="center">Perfect for practice, remixing, or transcription.</p>
+        <form id="uploadForm" action="/upload" method="post" enctype="multipart/form-data" class="upload-form">
+            <label for="file" class="file-label">Choose an audio file</label>
+            <input type="file" name="file" id="file" class="file-input" required>
+            <small> — we support MP3, WAV, FLAC.</small>
+            <button type="submit" class="upload-btn">🥁 Isolate Drums</button>
+        </form>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loadingScreen" style="
+            display:none;
+            flex-direction:column;
+            align-items:center;      /* centers horizontally */
+            justify-content:center;  /* centers vertically */
+            text-align:center;
+            ">
+        <img src="{{ url_for('static', path='loading-gif.gif') }}" alt="Loading..." style="width: 240px; height:auto; margin-bottom:20px;">
+        <p align="center" style="font-size:18px; font-weight:500; color:#333;">Separating your track, please wait...</p>
+    </div>
+
+    <script>
+       const form = document.getElementById("uploadForm");
+       form.addEventListener("submit", () => {
+        form.style.display = "none";
+        document.getElementById("loadingScreen").style.display = "flex"
+       })
+    </script>
+
+    {% if results %}
+        <div class="audio-control-container">
+            <h3 class="success-msg">✅ Your track has been separated!</h3>
+
+            <div class="audio-card">
+                <h3>🎧 Drums Only</h3>
+                <div id="wave-drums"></div>
+                <button onclick="playDrums()" type="button">Play / Pause</button>
+            </div>
+
+            <div class="audio-card">
+                <h3>🎵 Track Without Drums</h3>
+                <div id="wave-no-drums"></div>
+                <button onclick="playNoDrums()" type="button">Play / Pause</button>
+            </div>
+        </div>
+
+        <!-- Second block -->
+        <!-- Centered Container -->
+        <div class="download-container" style="
+            display:flex;
+            flex-direction:column;
+            align-items:center;  /* centers content horizontally */
+            justify-content:center; /* optional: center vertically if container has height */
+            text-align:center;
+            margin-top:50px;  /* optional spacing from top */
+            ">
+            <h2>Want Drum Sheet Music for Your Track? 🎶🥁🎼</h2>
+            <p>Press a button and get a drum sheet instantly.</p>
+            <button>Create Drum Sheet</button>
+        </div>
+
+        <!-- Include WaveSurfer.js -->
+        <script src="https://unpkg.com/wavesurfer.js"></script>
+        <script>
+        // Create waveforms dynamically from Flask results
+        const wavesurferDrums = WaveSurfer.create({
+            container: '#wave-drums',
+            waveColor: '#6c5ce7',
+            progressColor: '#a29bfe',
+            height: 80,
+            barWidth: 3,
+            responsive: true
+        });
+
+        const wavesurferNoDrums = WaveSurfer.create({
+            container: '#wave-no-drums',
+            waveColor: '#00b894',
+            progressColor: '#55efc4',
+            height: 80,
+            barWidth: 3,
+            responsive: true
+        });
+
+        // Load audio from Flask outputs
+        wavesurferDrums.load('/outputs/{{ results.drums }}');
+        wavesurferNoDrums.load('/outputs/{{ results.rest }}');
+
+        function playDrums() {
+            wavesurferDrums.playPause();
+        }
+
+        function playNoDrums() {
+            wavesurferNoDrums.playPause();
+        }
+        </script>
+    {% endif %}
+   
+    
 </body>
 </html>
