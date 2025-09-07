@@ -29,7 +29,7 @@ class AudioProcessor:
             "--two-stems", "drums",
             "-n", self.model,
             "-o", str(self.output_dir),
-            "--shifts", "5",           # Adds shift trick for better quality
+            "--shifts", "1",           # Adds shift trick for better quality
             "--overlap", "0.25",       # Prevents boundary artifacts
             str(input_file)
         ]

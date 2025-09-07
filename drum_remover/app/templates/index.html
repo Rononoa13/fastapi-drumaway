@@ -5,6 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Drum Separator</title>
     <style>
+        .success-msg {
+            color: #4CAF50;
+            font-weight: bold;
+            margin: 15px 0;
+            text-align: center;
+        }
         /* For upload form */
         .container {
             max-width: 450px;
@@ -103,36 +109,63 @@
     <div class="container">
         <h2>Upload a Song, Hear the Drums 🔊</h2>
         <p align="center">Perfect for practice, remixing, or transcription.</p>
-        <form action="/upload" method="post" enctype="multipart/form-data" class="upload-form">
+        <form id="uploadForm" action="/upload" method="post" enctype="multipart/form-data" class="upload-form">
             <label for="file" class="file-label">Choose an audio file</label>
             <input type="file" name="file" id="file" class="file-input" required>
             <small> — we support MP3, WAV, FLAC.</small>
-            <button type="submit" class="upload-btn">Separate Drums</button>
+            <button type="submit" class="upload-btn">🥁 Isolate Drums</button>
         </form>
     </div>
 
+    <!-- Loading Overlay -->
+    <div id="loadingScreen" style="
+            display:none;
+            flex-direction:column;
+            align-items:center;      /* centers horizontally */
+            justify-content:center;  /* centers vertically */
+            text-align:center;
+            ">
+        <img src="{{ url_for('static', path='loading-gif.gif') }}" alt="Loading..." style="width: 240px; height:auto; margin-bottom:20px;">
+        <p align="center" style="font-size:18px; font-weight:500; color:#333;">Separating your track, please wait...</p>
+    </div>
+
+    <script>
+       const form = document.getElementById("uploadForm");
+       form.addEventListener("submit", () => {
+        form.style.display = "none";
+        document.getElementById("loadingScreen").style.display = "flex"
+       })
+    </script>
 
     {% if results %}
         <div class="audio-control-container">
-            <h3 style="text-align:center;">Separated Successfully !!!</h3>
+            <h3 class="success-msg">✅ Your track has been separated!</h3>
 
             <div class="audio-card">
-                <h3>Listen Only Drums</h3>
+                <h3>🎧 Drums Only</h3>
                 <div id="wave-drums"></div>
                 <button onclick="playDrums()" type="button">Play / Pause</button>
             </div>
 
             <div class="audio-card">
-                <h3>Listen without Drums</h3>
+                <h3>🎵 Track Without Drums</h3>
                 <div id="wave-no-drums"></div>
                 <button onclick="playNoDrums()" type="button">Play / Pause</button>
             </div>
         </div>
 
         <!-- Second block -->
-        <div class="download-container">
-            <h3 align="center">Want Drum Sheet Music for Your Track? 🎶🥁🎼</h3>
-            <p align="center">Press a button and get a drum sheet instantly.</p>
+        <!-- Centered Container -->
+        <div class="download-container" style="
+            display:flex;
+            flex-direction:column;
+            align-items:center;  /* centers content horizontally */
+            justify-content:center; /* optional: center vertically if container has height */
+            text-align:center;
+            margin-top:50px;  /* optional spacing from top */
+            ">
+            <h2>Want Drum Sheet Music for Your Track? 🎶🥁🎼</h2>
+            <p>Press a button and get a drum sheet instantly.</p>
             <button>Create Drum Sheet</button>
         </div>
 

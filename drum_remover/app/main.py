@@ -12,6 +12,7 @@ from services.audio_processor import AudioProcessor
 
 app = FastAPI()
 # Mount the outputs folder to play audio locally.
+app.mount("/static", StaticFiles(directory="static"), name="static")
 app.mount("/outputs", StaticFiles(directory=OUTPUT_DIR), name="outputs")
 
 templates = Jinja2Templates(directory=(f"{BASE_DIR}/templates"))
@@ -84,6 +85,10 @@ def upload_audio(file: UploadFile = File(...)):
         url=f"/?drums={results['drums'].name}&rest={results['rest'].name}",
         status_code=status.HTTP_303_SEE_OTHER
     )
+    # return {
+    #         "drums_file": results["drums"].name,
+    #         "rest_file": results["rest"].name
+    #     }
 
 @app.get("/home")
 def home(request: Request):
