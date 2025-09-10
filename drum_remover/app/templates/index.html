@@ -12,13 +12,21 @@
             text-align: center;
         }
         /* For upload form */
-        .container {
-            max-width: 450px;
+        .shared-style {
             margin: 50px auto;
             padding: 20px;
             text-align: center;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
+
+        /* Specific max-widths */
+        .container {
+            max-width: 450px;
+        }
+
+        /* .sheet-generate-container {
+            max-width: 50%;
+        } */
 
         h2 {
             margin-bottom: 25px;
@@ -57,6 +65,7 @@
 
         .upload-btn {
             padding: 12px;
+            font-size: medium;
             background: #6c5ce7;
             color: #fff;
             font-weight: 600;
@@ -75,7 +84,7 @@
             display: flex;
             flex-direction: column;
             gap: 20px;
-            max-width: 500px;
+            max-width: 600px;
             margin: 40px auto;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
@@ -106,7 +115,7 @@
     </style>
 </head>
 <body>
-    <div class="container">
+    <div class="container shared-style">
         <h2>Upload a Song, Hear the Drums 🔊</h2>
         <p align="center">Perfect for practice, remixing, or transcription.</p>
         <form id="uploadForm" action="/upload" method="post" enctype="multipart/form-data" class="upload-form">
@@ -156,7 +165,8 @@
 
         <!-- Second block -->
         <!-- Centered Container -->
-        <div class="download-container" style="
+        <div class="sheet-generate-container shared-style"
+         style="
             display:flex;
             flex-direction:column;
             align-items:center;  /* centers content horizontally */
@@ -164,9 +174,11 @@
             text-align:center;
             margin-top:50px;  /* optional spacing from top */
             ">
-            <h2>Want Drum Sheet Music for Your Track? 🎶🥁🎼</h2>
-            <p>Press a button and get a drum sheet instantly.</p>
-            <button>Create Drum Sheet</button>
+            <form action="" class="upload-form">
+                <h2>Want Drum Sheet Music for Your Track? <br> 🎶🥁🎼</h2>
+                <p>Generate a drum sheet instantly with press of a button.</p>
+                <button type="submit" class="upload-btn">Create Drum Sheet 📝</button>
+            </form>
         </div>
 
         <!-- Include WaveSurfer.js -->
