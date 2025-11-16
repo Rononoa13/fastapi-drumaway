@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException, status
+from fastapi import FastAPI, UploadFile, File, HTTPException, status, BackgroundTasks
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi import Request
@@ -8,6 +8,7 @@ import os
 
 from config import UPLOAD_DIR, BASE_DIR, OUTPUT_DIR
 from services.audio_processor import AudioProcessor
+from services.background_tasks import detect_onsets_task
 
 
 app = FastAPI()
@@ -16,8 +17,9 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 app.mount("/outputs", StaticFiles(directory=OUTPUT_DIR), name="outputs")
 
 templates = Jinja2Templates(directory=(f"{BASE_DIR}/templates"))
-# Initialize processor
-processor = AudioProcessor()
+
+
+processor = AudioProcessor() # Initialize processor
 
 @app.get("/", response_class=HTMLResponse)
 def read_form(request: Request, drums: str = None, rest: str = None):
@@ -45,7 +47,7 @@ def read_form(request: Request, drums: str = None, rest: str = None):
 #         "rest_file": str(results["rest"])
 #     }
 @app.post("/upload")
-def upload_audio(file: UploadFile = File(...)):
+def upload_audio(file: UploadFile = File(...), background_tasks: BackgroundTasks = None):
     # Check if file is provided
     if not file.filename:
         raise HTTPException(
@@ -69,15 +71,12 @@ def upload_audio(file: UploadFile = File(...)):
         
     # Process audio
     processor = AudioProcessor(output_dir=OUTPUT_DIR)
-    # processor.separate_drums(upload_path)
 
-    # Return drumless track for download
-    # return FileResponse(
-    #     path=drumless_path,
-    #     filename=f"{file.filename}_drumless",
-    #     media_type="audio/mpeg"  # You can adjust based on file type
-    # )
     results = processor.separate_drums(upload_path)
+    drums_path = results["drums"]
+    # Schedule onset detection in background
+    if background_tasks:
+        background_tasks.add_task(detect_onsets_task, drums_path)
 
     # Pass results into state so index can render it
     # Redirect back to index with query params
@@ -85,10 +84,7 @@ def upload_audio(file: UploadFile = File(...)):
         url=f"/?drums={results['drums'].name}&rest={results['rest'].name}",
         status_code=status.HTTP_303_SEE_OTHER
     )
-    # return {
-    #         "drums_file": results["drums"].name,
-    #         "rest_file": results["rest"].name
-    #     }
+
 
 @app.get("/home")
 def home(request: Request):
