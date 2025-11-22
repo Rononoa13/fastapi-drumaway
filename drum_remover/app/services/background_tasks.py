@@ -1,8 +1,13 @@
 from pathlib import Path
 import json
+
+import numpy as np
+
 from services.onset_detector import OnsetDetector
+from services.cnn_preparer import CNNPreparer
 
 detector = OnsetDetector()
+cnn = CNNPreparer()
 
 def detect_onsets_task(drum_path: Path):
     """
@@ -23,5 +28,12 @@ def detect_onsets_task(drum_path: Path):
             json.dump({"onsets": onset_times}, f)
 
         print(f"✅ Onset detection complete: {len(onset_times)} hits saved to {out_json}")
+
+        # CNN PREP (MEL WINDOWS EXTRACTION)
+        print(f"[Task] Running CNN preparation...")
+        cnn_batch = cnn.prepare(drum_path, onset_times)
+        cnn_out_path = drum_path.with_suffix(".mel_windows.npy")
+        np.save(cnn_out_path, cnn_batch)
+        
     except Exception as e:
         print(f"[OnsetTask] Failed for {drum_path}: {e}")
