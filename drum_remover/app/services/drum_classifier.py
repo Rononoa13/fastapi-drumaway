@@ -5,83 +5,119 @@
 	4.	Save result next to the file:
 """
 # IMPORTANT NOTE: THIS IS MVP VERSION! SO NO ML IS USED
+# services/drum_classifier.py
 import numpy as np
-from pathlib import Path
-from typing import List, Literal, Dict, Optional
+from typing import List, Dict
 
-# All supported drum classes
-DrumLabel = Literal[
-    "kick",
-    "snare",
-    "hihat",
-    "tom1",
-    "tom2",
-    "tom3",
-    "crash",
-    "ride"
-]
+# Labels supported by the MVP classifier
+CLASS_LABELS = ["kick", "snare", "hihat", "tom1", "tom2", "tom3", "crash", "ride"]
 
 class DrumClassifier:
-    def __init__(self, model_path: Optional[Path] = None):
-        """
-        Args:
-            model_path: Optional path to a trained CNN model.
-                        If missing → runs in mock mode (useful for MVP)
-        """
-        self.model_path = model_path
-        self.model = None
+    """
+    Rule-based (heuristic) drum classifier for MVP.
+    Input: mel-window (H x W x 1) or batch (N, H, W, 1).
+    Output: label per window.
+    """
 
-        if model_path is not None:
-            self._load_model(model_path)
+    def __init__(self):
+        self.labels = CLASS_LABELS
+
+    def _energy_bands(self, mel: np.ndarray) -> Dict[str, float]:
+        """
+        Split mel spectrogram into coarse frequency bands and return mean energy.
+        Assumes mel.shape = (n_mels, n_frames)
+        """
+        n_mels = mel.shape[0]
+        # Define approximate band indices (these are heuristics; tune per your n_mels)
+        # We assume n_mels is ~64; adapt if different.
+        low_end = int(n_mels * 0.12)      # ~ <200Hz region
+        low_mid_end = int(n_mels * 0.30)  # toms / mid
+        mid_end = int(n_mels * 0.60)      # snare region / mid-high
+        high_mid_end = int(n_mels * 0.80) # high-mid
+        # bands
+        low = mel[:low_end].mean() if low_end > 0 else 0.0
+        low_mid = mel[low_end:low_mid_end].mean() if low_mid_end > low_end else 0.0
+        mid = mel[low_mid_end:mid_end].mean() if mid_end > low_mid_end else 0.0
+        high_mid = mel[mid_end:high_mid_end].mean() if high_mid_end > mid_end else 0.0
+        high = mel[high_mid_end:].mean() if n_mels > high_mid_end else 0.0
+
+        return {
+            "low": float(low),
+            "low_mid": float(low_mid),
+            "mid": float(mid),
+            "high_mid": float(high_mid),
+            "high": float(high),
+        }
+
+    def predict_window(self, window: np.ndarray) -> str:
+        """
+        Predict label for a single window.
+        window: shape (H, W, 1) or (H, W)
+        Returns a string label.
+        """
+        if window.ndim == 3:
+            mel = window[:, :, 0]
         else:
-            print("⚠️ DrumClassifier running in MOCK MODE (no ML yet).")
+            mel = window
 
-        self.class_labels: List[DrumLabel] = [
-            "kick", "snare", "hihat",
-            "tom1", "tom2", "tom3",
-            "crash", "ride"
-        ]
+        bands = self._energy_bands(mel)
 
-    # -----------------------------
-    # Loading model (real CNN later)
-    # -----------------------------
-    def _load_model(self, model_path: Path):
-        print(f"Loading model from {model_path}…")
-        # TODO: load TensorFlow model
-        # from tensorflow.keras.models import load_model
-        # self.model = load_model(model_path)
-        raise NotImplementedError("Model loading not implemented yet.")
+        low = bands["low"]
+        low_mid = bands["low_mid"]
+        mid = bands["mid"]
+        high_mid = bands["high_mid"]
+        high = bands["high"]
 
-    # -----------------------------
-    # Prediction
-    # -----------------------------
-    def predict_window(self, window: np.ndarray) -> DrumLabel:
+        # Basic heuristics (ratios) — tune these if needed.
+
+        # Kick: strong low energy relative to others
+        if low > max(low_mid * 1.2, mid * 1.4, high * 1.5):
+            return "kick"
+
+        # Hi-hat: very strong high energy
+        if high > max(high_mid * 1.1, mid * 1.5, low * 2.0):
+            return "hihat"
+
+        # Crash: wideband high/sting and longer decay — captured as strong high_mid + high
+        # Heuristic: both high_mid and high significant relative to mid
+        if (high + high_mid) > mid * 1.6 and (high + high_mid) > low_mid * 1.2:
+            return "crash"
+
+        # Snare: mid + high_mid prominent
+        if (mid + high_mid) > low_mid * 1.2 and mid > low * 0.9:
+            return "snare"
+
+        # Toms: energy concentrated in low-mid / mid (different relative thresholds)
+        # High tom: higher low_mid
+        if low_mid > mid * 1.1 and low_mid > low * 1.0:
+            return "tom1"
+
+        # Mid tom:
+        if low_mid > low and mid > low_mid * 0.8:
+            return "tom2"
+
+        # Floor tom: more low than low_mid
+        if low > low_mid * 1.1 and low_mid > mid * 0.8:
+            return "tom3"
+
+        # Fallbacks: prefer snare if mid present, else hihat if high present, else unknown->kick
+        if mid > low or high_mid > low:
+            return "snare"
+        if high > 0.01:
+            return "hihat"
+        return "kick"
+
+    def classify_batch(self, batch: np.ndarray) -> List[str]:
         """
-        Predict a single drum hit window.
-        For MVP → returns random classes.
+        batch: (N, H, W, 1)
+        returns list of labels length N
         """
-        if self.model is None:
-            # MOCK MODE: return fake label
-            return np.random.choice(self.class_labels)
+        labels = []
+        for win in batch:
+            labels.append(self.predict_window(win))
+        return labels
 
-        # REAL MODE:
-        # probs = self.model.predict(window[np.newaxis, ...])[0]
-        # idx = np.argmax(probs)
-        # return self.class_labels[idx]
-
-    def classify(self, windows: np.ndarray, onset_times: List[float]) -> List[Dict]:
-        """
-        Args:
-            windows: (N, H, W, 1) prepared mel-spec windows
-            onset_times: list of floats matching each window
-        Returns:
-            [{ "time": t, "label": "snare" }, ...]
-        """
-        results = []
-
-        for window, t in zip(windows, onset_times):
-            label = self.predict_window(window)
-            results.append({"time": t, "label": label})
-
-        return results
+    def classify_from_file(self, cnn_file_path) -> List[str]:
+        batch = np.load(str(cnn_file_path))
+        return self.classify_batch(batch)
     
