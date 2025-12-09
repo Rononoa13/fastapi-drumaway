@@ -1,3 +1,4 @@
+import json
 from fastapi import FastAPI, UploadFile, File, HTTPException, status, BackgroundTasks
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -74,7 +75,7 @@ def upload_audio(file: UploadFile = File(...), background_tasks: BackgroundTasks
 
     results = processor.separate_drums(upload_path)
     drums_path = results["drums"]
-    # Schedule onset detection in background
+    # # Schedule onset detection in background
     if background_tasks:
         background_tasks.add_task(detect_onsets_task, drums_path)
 
@@ -84,6 +85,20 @@ def upload_audio(file: UploadFile = File(...), background_tasks: BackgroundTasks
         url=f"/?drums={results['drums'].name}&rest={results['rest'].name}",
         status_code=status.HTTP_303_SEE_OTHER
     )
+
+
+@app.get("/hits")
+def get_hits(file: str):
+    hits_path = OUTPUT_DIR / file.replace(".wav", ".hits.json")
+    print("Looking for hits file:", hits_path, "Exists:", hits_path.exists())
+    if not hits_path.exists():
+        return {"hits": []}
+
+    with open(hits_path, "r") as f:
+        data = json.load(f)  # data is a list
+
+    print("Hits loaded:", len(data))  # just len(data)
+    return {"hits": data}  # wrap list in dict so JS can use data.hits  # { "hits": [ { "time": ..., "label": ... }, ... ] }
 
 
 @app.get("/home")
