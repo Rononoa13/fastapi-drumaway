@@ -44,7 +44,9 @@ class CNNPreparer:
 
         mel_batches = []
 
-        for onset in onset_times:
+        for i, onset in enumerate(onset_times):
+            if i % 50 == 0:
+                print(f"[CNN] Processing window {i+1}/{len(onset_times)}")
             # 1 - extract raw audio window
             window = self._extract_window(y, sr, onset)
             if len(window) == 0:

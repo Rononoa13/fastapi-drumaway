@@ -43,7 +43,7 @@ class OnsetDetector:
             y=y,
             sr=sr,
             hop_length = self.hop,
-            aggragate=np.median,
+            aggregate=np.median,
             n_mels=self.n_mels,
             fmax=self.fmax  # Capture cymbal and snare crack
         )
