@@ -8,11 +8,18 @@ from services.onset_detector import OnsetDetector
 from services.cnn_preparer import CNNPreparer
 from services.drum_classifier import DrumClassifier
 from services.midi_writer import MIDIWriter
+from services.quantization import RhythmQuantizer
+from services.notation_builder import NotationBuilder
+from services.rhythm_structure import RhythmStructurer
+
 
 # Instantiate reusable objects
 _detector = OnsetDetector()
 _cnn_preparer = CNNPreparer()
 _classifier = DrumClassifier()
+_rhythm_quantizer = RhythmQuantizer()
+_structurer = RhythmStructurer()
+_notation_builder = NotationBuilder()
 
 def run_full_pipeline(
     drums_path: Path,
@@ -23,15 +30,14 @@ def run_full_pipeline(
     midi_bpm: int = 120
 ) -> dict:
     """
-    Run the pipeline end-to-end for a given drum stem file.
-
-    Produces:
-      - <stem>.onsets.json    (list of onset times)
-      - <stem>.mel_windows.npy (N, H, W, 1)
-      - <stem>.hits.json      (list of {time, label})
-      - <stem>.drums.mid      (if save_midi True)
-
-    Returns a dict with paths and counts.
+    Full pipeline:
+      1) Onset detection
+      2) CNN prep
+      3) Drum classification
+      4) MIDI export
+      5) Rhythm quantization
+      6) Rhythm structuring
+      7) Notation builder → JSON for VexFlow
     """
     drums_path = Path(drums_path)
     if not drums_path.exists():
@@ -89,12 +95,30 @@ def run_full_pipeline(
     if save_midi and (not midi_path.exists() or force_rerun_onsets or force_rerun_cnnprep):
         writer = MIDIWriter(bpm=midi_bpm)
         writer.write(hits, midi_path)
+    # ---------------------------
+    # 5) Rhythm quantization
+    # ---------------------------
+    quantized_hits = _rhythm_quantizer.quantize(hits, bpm=midi_bpm)
+    # ---------------------------
+    # 6) Rhythm structuring
+    # ---------------------------
+    structured_hits = _structurer.structure(quantized_hits)
+    # ---------------------------
+    # 7) Notation builder
+    # ---------------------------
+    measures = _notation_builder.build(structured_hits)
+
+    # Save notation JSON for frontend (VexFlow)
+    notation_json_path = drums_path.with_suffix(".notation.json")
+    with open(notation_json_path, "w") as f:
+        json.dump(measures, f, indent=2)
 
     return {
         "onsets_json": str(onsets_json),
         "mel_npy": str(mel_npy),
         "hits_json": str(hits_json),
         "midi": str(midi_path) if save_midi else None,
+        "notation_json": str(notation_json_path),
         "num_onsets": len(onset_times),
         "num_windows": int(batch.shape[0])
     }
