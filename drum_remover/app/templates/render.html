@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Drum Notation</title>
+    <!-- Load VexFlow first -->
+    <script src="https://unpkg.com/vexflow/releases/vexflow-min.js"></script>
+    <style>
+        #notation {
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h2>Drum Notation</h2>
+    <h3><p>Rendering file: {{ file }}</p></h3>
+    <div id="notation"></div>
+
+    <script>
+    // Ensure library is loaded and DOM is ready
+    window.onload = async function() {
+        const file = "{{ file }}";  // Passed from FastAPI
+        const resp = await fetch(`/get_notation?file=${encodeURIComponent(file)}`);
+        console.log("resp ->", resp)
+        const data = await resp.json();
+        console.log("data:", data);
+        const notation = data.notation;
+
+        // If nothing is there, show message
+        if (!notation.measures || notation.measures.length === 0) {
+            document.getElementById("notation").innerText = "No notation available.";
+            return;
+        }
+
+        const VF = Vex.Flow;
+        const div = document.getElementById("notation");
+        const renderer = new VF.Renderer(div, VF.Renderer.Backends.SVG);
+        renderer.resize(1000, 200 + notation.measures.length * 100);
+        const context = renderer.getContext();
+        context.setFont("Arial", 10);
+
+        let x = 10;
+        let y = 40;
+
+        notation.measures.forEach(measure => {
+            const staveWidth = 200;
+
+            // Draw stave
+            const stave = new VF.Stave(x, y, staveWidth);
+            stave.addClef("percussion").setContext(context).draw();
+
+            // Build VexFlow notes
+            const notes = measure.map(hit => 
+                new VF.StaveNote({
+                    keys: ["c/5"], // placeholder, map drum label to percussion keys
+                    duration: hit.duration,
+                    clef: "percussion"
+                })
+            );
+
+            // Create voice and add notes
+            const voice = new VF.Voice({num_beats: 4, beat_value: 4});
+            voice.addTickables(notes);
+
+            // Format and draw
+            new VF.Formatter().joinVoices([voice]).format([voice], staveWidth - 20);
+            voice.draw(context, stave);
+
+            // Move next stave down
+            y += 120;
+        });
+    };
+    </script>
+</body>
+</html>

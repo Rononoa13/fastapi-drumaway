@@ -17,7 +17,6 @@ from services.rhythm_structure import RhythmStructurer
 _detector = OnsetDetector()
 _cnn_preparer = CNNPreparer()
 _classifier = DrumClassifier()
-_rhythm_quantizer = RhythmQuantizer()
 _structurer = RhythmStructurer()
 _notation_builder = NotationBuilder()
 
@@ -98,7 +97,8 @@ def run_full_pipeline(
     # ---------------------------
     # 5) Rhythm quantization
     # ---------------------------
-    quantized_hits = _rhythm_quantizer.quantize(hits, bpm=midi_bpm)
+    _rhythm_quantizer = RhythmQuantizer(bpm=midi_bpm)
+    quantized_hits = _rhythm_quantizer.quantize(hits)
     # ---------------------------
     # 6) Rhythm structuring
     # ---------------------------
@@ -107,9 +107,19 @@ def run_full_pipeline(
     # 7) Notation builder
     # ---------------------------
     measures = _notation_builder.build(structured_hits)
-
+    # ---------------------------
+    # 8) Convert to standard JSON for frontend
+    # ---------------------------
+    def notation_to_json(measures_dict: dict) -> dict:
+        """Convert internal measure dict to frontend-friendly format"""
+        # Ensure measures are sorted by measure number
+        measures_list = [measures_dict[m] for m in sorted(measures_dict.keys())]
+        return {"measures": measures_list}
+    notation_json = notation_to_json(measures)
+    
     # Save notation JSON for frontend (VexFlow)
     notation_json_path = drums_path.with_suffix(".notation.json")
+    print("Saving notation JSON to:", notation_json_path)
     with open(notation_json_path, "w") as f:
         json.dump(measures, f, indent=2)
 

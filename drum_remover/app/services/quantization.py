@@ -21,7 +21,7 @@ class RhythmQuantizer:
         quantized = []
 
         for hit in hits:
-            beat_pos = hit.time / self.seconds_per_beat
+            beat_pos = hit["time"] / self.seconds_per_beat
             snapped = self._nearest_grid(beat_pos)
 
             if abs(snapped - beat_pos) <= self.tolerance_beats:
@@ -31,8 +31,8 @@ class RhythmQuantizer:
             quantized.append(
                 QuantizedHit(
                     beat=round(final_beat, 4),
-                    label=hit.label,
-                    original_time=hit.time
+                    label=hit["label"],
+                    original_time=hit["time"]
                 )
             )
         return quantized
