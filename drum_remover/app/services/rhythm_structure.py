@@ -23,7 +23,8 @@ class RhythmStructurer:
         structured = []
 
         for hit in quantized_hits:
-            beat_pos = hit["beat"]
+            beat_pos = hit.beat
+            label = hit.label
 
             # Measure index
             measure = int(beat_pos // self.beats_per_measure) + 1
@@ -37,6 +38,6 @@ class RhythmStructurer:
                 "measure": measure,
                 "beat": beat_in_measure,
                 "subdivision": subdivision,
-                "label": hit["label"]
+                "label": label
             })
         return structured

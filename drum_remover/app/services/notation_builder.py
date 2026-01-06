@@ -32,10 +32,10 @@ class NotationBuilder:
                 delta_beats = (
                     (next_hit["measure"] - measure) * self.beats_per_measure
                     + (next_hit["beat"] - hit["beat"])
-                    + (next_hit["subdivision"] - hit["subdivision"]) / self.subdivisions_per_beat
+                    + (next_hit["subdivision"] - hit["subdivision"]) / self.subdivision_per_beat
                 )
             else:
-                delta_beats = 1 / self.subdivisions_per_beat  # Last note default to one subdivision
+                delta_beats = 1 / self.subdivision_per_beat  # Last note default to one subdivision
 
             # Map delta_beats to standard notation duration
             duration = self._beat_to_duration(delta_beats)
